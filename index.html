@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intérprete DEW Demo</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 820px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    .aviso {
+      background: #eef5ff;
+      border-left: 5px solid #0b6efd;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+
+    label {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      background: #0b6efd;
+      color: white;
+      padding: 18px 22px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 18px;
+    }
+
+    input {
+      display: none;
+    }
+
+    #out {
+      margin-top: 24px;
+    }
+
+    .resultado {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 18px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      background: #f1f1f1;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+    }
+
+    .error {
+      color: #b00020;
+      background: #ffecec;
+      padding: 12px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <h1>Intérprete DEW Demo</h1>
+
+    <p>Seleccione un archivo <strong>estudio_demo.zip</strong> desde su iPhone.</p>
+
+    <div class="aviso">
+      El archivo se procesa de forma local en el navegador. No se sube a internet ni se almacena en servidores.
+    </div>
+
+    <label for="archivoZip">Cargar estudio ZIP</label>
+    <input id="archivoZip" type="file" accept=".zip,application/zip,application/x-zip-compressed">
+
+    <div id="out"></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <script>
+    const input = document.getElementById("archivoZip");
+    const out = document.getElementById("out");
+
+    input.addEventListener("change", async function (event) {
+      try {
+        const file = event.target.files[0];
+
+        if (!file) {
+          return;
+        }
+
+        out.innerHTML = "<p>Leyendo archivo ZIP...</p>";
+
+        if (typeof JSZip === "undefined") {
+          out.innerHTML = "<div class='error'>No se pudo cargar JSZip. Revisa que el iPhone tenga conexión a internet al abrir el intérprete.</div>";
+          return;
+        }
+
+        const zip = await JSZip.loadAsync(file);
+
+        const jsonName = Object.keys(zip.files).find(function (name) {
+          return name.toLowerCase().endsWith(".json");
+        });
+
+        if (!jsonName) {
+          out.innerHTML = "<div class='error'>No se encontró ningún archivo JSON dentro del ZIP.</div>";
+          return;
+        }
+
+        const texto = await zip.file(jsonName).async("string");
+        const data = JSON.parse(texto);
+
+        const paciente = data.paciente || {};
+        const interpretacion = data.interpretacion || {};
+
+        out.innerHTML = `
+          <section class="resultado">
+            <h2>${paciente.nombre || "Paciente demo"}</h2>
+            <p><strong>ID:</strong> ${paciente.id || "Sin ID"}</p>
+            <p><strong>Edad:</strong> ${paciente.edad || "Sin edad"}</p>
+            <p><strong>BI-RADS:</strong> ${interpretacion.birads || "Sin BI-RADS"}</p>
+
+            <h3>Interpretación</h3>
+            <pre>${interpretacion.conclusion || "Sin conclusión disponible."}</pre>
+          </section>
+        `;
+      } catch (error) {
+        out.innerHTML = "<div class='error'>No se pudo abrir el ZIP o el JSON no es compatible.</div>";
+        console.error(error);
+      }
+    });
+  </script>
+</body>
+</html>
